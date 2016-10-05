@@ -9,23 +9,27 @@ var natpmp = require('nat-pmp'),
     port = process.argv[2] || 443,
     mysql = require('mysql'),
     device = require("./device"),
-    exec = require('child_process').exec;
+    exec = require('child_process').exec,
+    network = require('network');
 
-
-var client = natpmp.connect('192.168.1.1');
-var externalIp = "";
-client.externalIp(function (err, info) {
-    if (err) throw err;
-
-    externalIp = info.ip.join('.');
-});
-
-//Start point is port 2000. Increments everytime a port isn't available
 var portNumber = 2001;
 
+network.get_gateway_ip(function(err, ip) {
+    console.log(err || ip); // err may be 'No active network interface found.'
 
+    var client = natpmp.connect(ip);
+    var externalIp = "";
+    client.externalIp(function (err, info) {
+        if (err) throw err;
 
-portMapping();
+        externalIp = info.ip.join('.');
+    });
+
+    portMapping();
+//Start point is port 2000. Increments everytime a port isn't available
+
+})
+
 
 //Function portMapping makes the specified port accessible from outside the local network
 function portMapping(){
