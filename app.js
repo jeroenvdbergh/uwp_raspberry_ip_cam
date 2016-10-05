@@ -45,8 +45,9 @@ function portMapping(){
 
         //increment portnumber and restart function portMapping()
         portNumber++;
-
-        portMapping();
+        console.log("new port number = " + portNumber);
+        
+        setTimeout( portMapping, 1000 );
     }
     syncWithDatabase();
 }
