@@ -15,39 +15,50 @@ var natpmp = require('nat-pmp'),
 var portNumber = 2001;
 
 network.get_gateway_ip(function(err, ip) {
-    console.log(err || ip); // err may be 'No active network interface found.'
+    try {
+        console.log(err || ip); // err may be 'No active network interface found.'
 
-    var client = natpmp.connect(ip);
-    var externalIp = "";
-    client.externalIp(function (err, info) {
-        if (err) throw err;
+        var client = natpmp.connect(ip);
+        var externalIp = "";
+        client.externalIp(function (err, info) {
+            if (err) throw err;
 
-        externalIp = info.ip.join('.');
-    });
+            externalIp = info.ip.join('.');
+        });
+        portMapping(client);
+    }catch(Exception){
+        console.log(Exception);
+        console.log("error while configuring nat-pmp");
+    }
 
-    portMapping();
+
+
 //Start point is port 2000. Increments everytime a port isn't available
 
 })
 
 
 //Function portMapping makes the specified port accessible from outside the local network
-function portMapping(){
+function portMapping(client){
+    console.log("starting portmapping");
     try {
         // setup a new port mapping
         client.portMapping({ private: 2000, public:portNumber, ttl: 3600 }, function (err, info) {
-            if (err) throw err;
+            if (err)  throw err;
             console.log(info);
             console.log(portNumber);
         });
+
     }catch(Exception){
+        console.log(Exception);
         console.log("couldn't create server in specified port, moving to next port");
 
         //increment portnumber and restart function portMapping()
         portNumber++;
         console.log("new port number = " + portNumber);
-        
-        setTimeout( portMapping, 1000 );
+
+        //setTimeout( portMapping, 1000 );
+        portMapping();
     }
     syncWithDatabase();
 }
@@ -70,12 +81,12 @@ function syncWithDatabase(){
         if (rows.length == 0){
             insertNewRecord(connection);
         }else {
-           if(rows[0].Port != portNumber){
+            if(rows[0].Port != portNumber){
 
-               updatePortNumber(connection);
-           }else {
-               console.log("Camera is up to date");
-           }
+                updatePortNumber(connection);
+            }else {
+                console.log("Camera is up to date");
+            }
         }
         console.log("turning on camera");
         turnOnCamera();
