@@ -12,13 +12,13 @@ var natpmp = require('nat-pmp'),
     exec = require('child_process').exec,
     network = require('network');
 
-var portNumber = 2001;
+var portNumber = 2000;
 
 network.get_gateway_ip(function(err, ip) {
     try {
         console.log(err || ip); // err may be 'No active network interface found.'
 
-        var client = natpmp.connect(ip);
+        var client = natpmp.connect('192.168.1.1');
         var externalIp = "";
         client.externalIp(function (err, info) {
             if (err) throw err;
@@ -26,6 +26,7 @@ network.get_gateway_ip(function(err, ip) {
             externalIp = info.ip.join('.');
         });
         portMapping(client);
+        //map(client);
     }catch(Exception){
         console.log(Exception);
         console.log("error while configuring nat-pmp");
@@ -37,6 +38,14 @@ network.get_gateway_ip(function(err, ip) {
 
 })
 
+function map(client){
+    client.portMapping({ private: 2000, public:portNumber, ttl: 3600 }, function (err, info) {
+        if (err)  throw err;
+        portNumber = info.public;
+        console.log(info.public);
+    });
+}
+
 
 //Function portMapping makes the specified port accessible from outside the local network
 function portMapping(client){
@@ -45,10 +54,11 @@ function portMapping(client){
         // setup a new port mapping
         client.portMapping({ private: 2000, public:portNumber, ttl: 3600 }, function (err, info) {
             if (err)  throw err;
-            console.log(info);
+            console.log(info.public);
             console.log(portNumber);
+            syncWithDatabase(info.public);
         });
-
+        console.log("hondje");
     }catch(Exception){
         console.log(Exception);
         console.log("couldn't create server in specified port, moving to next port");
@@ -60,11 +70,11 @@ function portMapping(client){
         //setTimeout( portMapping, 1000 );
         portMapping();
     }
-    syncWithDatabase();
+
 }
 
 
-function syncWithDatabase(){
+function syncWithDatabase(port){
 
     var connection = mysql.createConnection({
         host     : '185.13.227.197',
@@ -79,11 +89,13 @@ function syncWithDatabase(){
         if (err) throw err;
 
         if (rows.length == 0){
+            console.log("inserting new record");
             insertNewRecord(connection);
-        }else {
-            if(rows[0].Port != portNumber){
 
-                updatePortNumber(connection);
+        }else {
+            if(rows[0].Port != port){
+                console.log("updating camera");
+                updatePortNumber(connection, port);
             }else {
                 console.log("Camera is up to date");
             }
@@ -115,9 +127,9 @@ function turnOnCamera(){
     console.log("camera is running");
 }
 
-function updatePortNumber(connection) {
+function updatePortNumber(connection, port) {
 
-    connection.query('UPDATE tbCamera SET Port="' + portNumber + '" WHERE RpiSerial ="' + device.serial() + '"', function (err, rows, fields) {
+    connection.query('UPDATE tbCamera SET Port="' + port + '" WHERE RpiSerial ="' + device.serial() + '"', function (err, rows, fields) {
         if (err) throw err;
 
     });
